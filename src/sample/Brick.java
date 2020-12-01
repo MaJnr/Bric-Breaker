@@ -1,5 +1,8 @@
 package sample;
 
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+
 import java.awt.*;
 
 public class Brick {
@@ -15,15 +18,17 @@ public class Brick {
     private Point bottomRight;
     private Point bottomLeft;
     private Point topLeft;
+    private Point middle;
 
     private Drop drop;
+    Circle c;
 
-    private final double DROP_CHANCE = 0;
+    private final double DROP_CHANCE = 1;
 
     public void setDrop() {
         Drop randomDrop = null;
         if (Math.random() <= DROP_CHANCE) {
-            randomDrop = new Drop();
+            randomDrop = new Drop(middle);
         }
         drop = randomDrop;
     }
@@ -33,6 +38,7 @@ public class Brick {
         this.bottomRight = bottomRight;
         this.bottomLeft = bottomLeft;
         this.topLeft = topLeft;
+        middle = new Point((topLeft.x + topRight.x)/2, (topLeft.y + bottomLeft.y)/2);
         setDrop();
     }
 
@@ -74,5 +80,13 @@ public class Brick {
 
     public void setTopLeft(Point topLeft) {
         this.topLeft = topLeft;
+    }
+
+    public Point getMiddle() {
+        return middle;
+    }
+
+    public void setMiddle(Point middle) {
+        this.middle = middle;
     }
 }

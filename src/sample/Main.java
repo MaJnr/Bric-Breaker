@@ -84,6 +84,10 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     Line line;
     private boolean arrowDrawn = false;
 
+    //drops list
+    Drop drop;
+    List<Drop> dropList = new ArrayList<>();
+
     @Override
     public void start(Stage primaryStage) {
         root = setupGame(STAGE_NB);
@@ -135,7 +139,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                     startTranslate(barSpeed);
                 }
                 if (isGameWaiting) {
-                    x = bar.getTopRight().x - barWidth /2;
+                    x = bar.getTopRight().x - barWidth / 2;
                     rightDirection = true;
                     drawArrow(true);
                 } else if (arrowDrawn) {
@@ -148,7 +152,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                     startTranslate(-barSpeed);
                 }
                 if (isGameWaiting) {
-                    x = bar.getTopLeft().x + barWidth /2;
+                    x = bar.getTopLeft().x + barWidth / 2;
                     rightDirection = false;
                     drawArrow(false);
                 } else if (arrowDrawn) {
@@ -172,14 +176,14 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             return;
         }
 
-            levelCleared = true;
-            //state of the next frame
-            for (int p = 0; p < bricksList.size(); p++) {
-                if (bricksList.get(p) == null) {
-                    continue;
-                }
-                //if the level is cleared this statement is never reached
-                levelCleared = false;
+        levelCleared = true;
+        //state of the next frame
+        for (int p = 0; p < bricksList.size(); p++) {
+            if (bricksList.get(p) == null) {
+                continue;
+            }
+            //if the level is cleared this statement is never reached
+            levelCleared = false;
        /*         //todo: check diagonal hits (ball currently considered as a square)
                 //oriented square (diamond) test
                 boolean diamondDelete = false;
@@ -227,168 +231,181 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                         bricksList.set(p, null);
                         nodeList.set(p, null);
                     } else {*/
-                boolean squareDelete = false;
-                if (bricksList.get(p).getBottomLeft().y >= y - RADIUS && bricksList.get(p).getTopLeft().y <= y - RADIUS && upDirection) {
-                    if (bricksList.get(p).getBottomLeft().x <= x && bricksList.get(p).getBottomRight().x >= x) {
-                        y += ySpeed;
-                        upDirection = false;
-                        squareDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getTopRight().y <= y + RADIUS && bricksList.get(p).getBottomRight().y >= y + RADIUS && !upDirection) {
-                    if (bricksList.get(p).getTopLeft().x <= x && bricksList.get(p).getTopRight().x >= x) {
-                        y -= ySpeed;
-                        upDirection = true;
-                        squareDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getTopLeft().x <= x + RADIUS && bricksList.get(p).getTopRight().x >= x + RADIUS && rightDirection) {
-                    if (bricksList.get(p).getTopLeft().y <= y && bricksList.get(p).getBottomLeft().y >= y) {
-                        x -= xSpeed;
-                        rightDirection = false;
-                        squareDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getTopRight().x >= x - RADIUS && bricksList.get(p).getTopLeft().x <= x + RADIUS && !rightDirection) {
-                    if (bricksList.get(p).getTopRight().y <= y && bricksList.get(p).getBottomRight().y >= y) {
-                        x += xSpeed;
-                        rightDirection = true;
-                        squareDelete = true;
-                    }
-                }
-
-
-                if (squareDelete) {
-                    //triggers drop effect if exists
-
-                    if (bricksList.get(p).getDrop() != null) {
-                        String effect = bricksList.get(p).getDrop().getEffect();
-                        switch (effect) {
-                            case "increaseBarSize":
-                                barWidth += 100;
-                                setupBar(barWidth);
-                                break;
-                            case "decreaseBarSize":
-                                if (barWidth >= 100)
-                                barWidth -= 100;
-                                setupBar(barWidth);
-                                break;
-                            case "increaseBarSpeed":
-                                barSpeed += 3;
-                                break;
-                            case "decreaseBarSpeed":
-                                barSpeed -= 3;
-                                break;
-                            case "increaseBallSpeed":
-                                ySpeed++;
-                                break;
-                            case "decreaseBallSpeed":
-                                if (ySpeed > 1)
-                                ySpeed--;
-                                break;
-                            default:
-                                System.out.println("erreur: pas d'effet");
-                                break;
-                        }
-                        System.out.println(effect);
-                    }
-
-                    root.getChildren().remove(nodeList.get(p));
-                    bricksList.set(p, null);
-                    nodeList.set(p, null);
-                }
-                //  }
-            }
-
-            if (levelCleared) {
-                System.out.println("level terminé");
-                drawGameOver();
-                return;
-            }
-
-            //-----------------------LEVEL BORDERS--------------------
-            //x position
-            if (rightDirection) {
-                if (x >= WIDTH - RADIUS + 10) {
-                    x -= xSpeed;
-                    rightDirection = false;
-                } else {
-                    x += xSpeed;
-                }
-            } else if (x <= RADIUS) {
-                x += xSpeed;
-                rightDirection = true;
-            } else {
-                x -= xSpeed;
-            }
-
-            //y position
-            if (upDirection) {
-                if (y <= RADIUS) {
+            boolean squareDelete = false;
+            if (bricksList.get(p).getBottomLeft().y >= y - RADIUS && bricksList.get(p).getTopLeft().y <= y - RADIUS && upDirection) {
+                if (bricksList.get(p).getBottomLeft().x <= x && bricksList.get(p).getBottomRight().x >= x) {
                     y += ySpeed;
                     upDirection = false;
-                } else {
-                    y -= ySpeed;
+                    squareDelete = true;
                 }
-            } else if (y >= HEIGHT - RADIUS + 10) {
-                //hit the bottom : game over
-                //timeline.stop();
-                drawGameOver();
-                System.out.println("gameover");
-                return;
-                //y -= ySpeed;
-                //upDirection = true;
-            } else {
-                y += ySpeed;
             }
-            //----------------------------------------------------------
-
-            //--------------------BAR BORDERS---------------------------
-            if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y && !upDirection) {
-                if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x) {
+            if (bricksList.get(p).getTopRight().y <= y + RADIUS && bricksList.get(p).getBottomRight().y >= y + RADIUS && !upDirection) {
+                if (bricksList.get(p).getTopLeft().x <= x && bricksList.get(p).getTopRight().x >= x) {
                     y -= ySpeed;
                     upDirection = true;
-                    if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS < bar.getTopLeft().x + (barWidth / 4)) {
-                        //if hit on the quarter left
-                        x -= xSpeed;
-                        if (rightDirection && xSpeed > 0) {
-                            xSpeed--;
-                        } else {
-                            xSpeed++;
-                        }
-                        rightDirection = false;
-                    } else if (x + RADIUS <= bar.getTopRight().x && x + RADIUS > bar.getTopRight().x - (barWidth / 4)) {
-                        //if hit on the quarter right
-                        x += xSpeed;
-                        if (!rightDirection && xSpeed > 0) {
-                            xSpeed--;
-                        } else {
-                            xSpeed++;
-                        }
-                        rightDirection = true;
-                    }
-
+                    squareDelete = true;
                 }
             }
-            if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x && rightDirection) {
-                if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y) {
+            if (bricksList.get(p).getTopLeft().x <= x + RADIUS && bricksList.get(p).getTopRight().x >= x + RADIUS && rightDirection) {
+                if (bricksList.get(p).getTopLeft().y <= y && bricksList.get(p).getBottomLeft().y >= y) {
                     x -= xSpeed;
-                    y -= ySpeed;
-                    upDirection = true;
                     rightDirection = false;
+                    squareDelete = true;
                 }
             }
-            if (x + RADIUS <= bar.getTopRight().x && x + RADIUS >= bar.getBottomLeft().x && !rightDirection) {
-                if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y) {
+            if (bricksList.get(p).getTopRight().x >= x - RADIUS && bricksList.get(p).getTopLeft().x <= x + RADIUS && !rightDirection) {
+                if (bricksList.get(p).getTopRight().y <= y && bricksList.get(p).getBottomRight().y >= y) {
                     x += xSpeed;
-                    y -= ySpeed;
-                    upDirection = true;
+                    rightDirection = true;
+                    squareDelete = true;
+                }
+            }
+
+
+            if (squareDelete) {
+                //triggers drop effect if exists
+
+                if (bricksList.get(p).getDrop() != null) {
+                    dropList.add(bricksList.get(p).getDrop());
+                    drop = bricksList.get(p).getDrop();
+                }
+
+                root.getChildren().remove(nodeList.get(p));
+                bricksList.set(p, null);
+                nodeList.set(p, null);
+            }
+            //  }
+        }
+
+        if (levelCleared) {
+            System.out.println("level terminé");
+            drawGameOver();
+            return;
+        }
+
+        //-----------------------LEVEL BORDERS--------------------
+        //x position
+        if (rightDirection) {
+            if (x >= WIDTH - RADIUS + 10) {
+                x -= xSpeed;
+                rightDirection = false;
+            } else {
+                x += xSpeed;
+            }
+        } else if (x <= RADIUS) {
+            x += xSpeed;
+            rightDirection = true;
+        } else {
+            x -= xSpeed;
+        }
+
+        //y position
+        if (upDirection) {
+            if (y <= RADIUS) {
+                y += ySpeed;
+                upDirection = false;
+            } else {
+                y -= ySpeed;
+            }
+        } else if (y >= HEIGHT - RADIUS + 10) {
+            //hit the bottom : game over
+            //timeline.stop();
+            drawGameOver();
+            System.out.println("gameover");
+            return;
+            //y -= ySpeed;
+            //upDirection = true;
+        } else {
+            y += ySpeed;
+        }
+        //----------------------------------------------------------
+
+        //--------------------BAR BORDERS---------------------------
+        if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y && !upDirection) {
+            if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x) {
+                y -= ySpeed;
+                upDirection = true;
+                if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS < bar.getTopLeft().x + (barWidth / 4)) {
+                    //if hit on the quarter left
+                    x -= xSpeed;
+                    if (rightDirection && xSpeed > 0) {
+                        xSpeed--;
+                    } else {
+                        xSpeed++;
+                    }
+                    rightDirection = false;
+                } else if (x + RADIUS <= bar.getTopRight().x && x + RADIUS > bar.getTopRight().x - (barWidth / 4)) {
+                    //if hit on the quarter right
+                    x += xSpeed;
+                    if (!rightDirection && xSpeed > 0) {
+                        xSpeed--;
+                    } else {
+                        xSpeed++;
+                    }
                     rightDirection = true;
                 }
-            }
-            //---------------------------------------------------------
 
-       // System.out.println(xSpeed + " " + ySpeed);
+            }
+        }
+        if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x && rightDirection) {
+            if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y) {
+                x -= xSpeed;
+                y -= ySpeed;
+                upDirection = true;
+                rightDirection = false;
+            }
+        }
+        if (x + RADIUS <= bar.getTopRight().x && x + RADIUS >= bar.getBottomLeft().x && !rightDirection) {
+            if (y + RADIUS >= bar.getTopLeft().y && y + RADIUS <= bar.getBottomRight().y) {
+                x += xSpeed;
+                y -= ySpeed;
+                upDirection = true;
+                rightDirection = true;
+            }
+        }
+        //---------------------------------------------------------
+
+        //------------------------DROPS----------------------------
+
+        if (drop != null) {
+            root.getChildren().add(drop.getCircle());
+            String effect = drop.getEffect();
+            switch (effect) {
+                case "increaseBarSize":
+                    barWidth += 50;
+                    setupBar(barWidth);
+                    break;
+                case "decreaseBarSize":
+                    if (barWidth > 100) {
+                        barWidth -= 50;
+                        setupBar(barWidth);
+                    }
+                    break;
+                case "increaseBarSpeed":
+                    barSpeed += 2;
+                    break;
+                case "decreaseBarSpeed":
+                    if (barSpeed < 3)
+                        barSpeed -= 2;
+                    break;
+                case "increaseBallSpeed":
+                    ySpeed++;
+                    break;
+                case "decreaseBallSpeed":
+                    if (ySpeed > 1)
+                        ySpeed--;
+                    break;
+                default:
+                    System.out.println("erreur: pas d'effet");
+                    break;
+            }
+            System.out.println(effect);
+            drop = null;
+        }
+
+        //---------------------------------------------------------
+
+        // System.out.println(xSpeed + " " + ySpeed);
     }
 
     private void drawArrow(boolean toTheRight) {
@@ -397,9 +414,9 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             arrowDrawn = false;
         }
         if (toTheRight) {
-            line = new Line(x, y,x + 30, y - 30);
+            line = new Line(x, y, x + 30, y - 30);
         } else {
-            line = new Line(x, y, x-30, y-30);
+            line = new Line(x, y, x - 30, y - 30);
         }
         line.setStroke(Color.YELLOW);
         root.getChildren().add(line);
@@ -463,7 +480,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             for (int i = 0; i < 20; i++) {
                 // columns
                 for (int j = 0; j < 20; j++) {
-                    if ((i+j)%2 == 0) {
+                    if ((i + j) % 2 == 0) {
                         continue;
                     }
 
@@ -512,10 +529,23 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             Point topLeft = new Point((WIDTH / 2) - (barWidth / 2), HEIGHT - 60);
             bar = new Bar(topRight, bottomRight, bottomLeft, topLeft);
         } else {
+            // get the current points before modifying them
+            Point tmpTopRight = new Point(bar.getTopRight().x, bar.getTopRight().y);
+            Point tmpBottomRight = new Point(bar.getBottomRight().x, bar.getBottomRight().y);
+            Point tmpBottomLeft = new Point(bar.getBottomLeft().x, bar.getBottomLeft().y);
+            Point tmpTopLeft = new Point(bar.getTopLeft().x, bar.getTopLeft().y);
+
+            //modification of the hitbox
+            bar.setTopRight(new Point((int) ((tmpTopLeft.x + r.getWidth() / 2) + barWidth / 2), HEIGHT - 60));
+            bar.setBottomRight(new Point((int) ((tmpBottomLeft.x + r.getWidth() / 2) + barWidth / 2), HEIGHT - 60 + BAR_HEIGHT));
+            bar.setTopLeft(new Point((int) ((tmpTopRight.x - r.getWidth() / 2) - barWidth / 2), HEIGHT - 60));
+            bar.setBottomLeft(new Point((int) (tmpBottomRight.x - r.getWidth() / 2 - barWidth / 2), HEIGHT - 60 + BAR_HEIGHT));
+
+            //modifications of the sprite
             r.setWidth(barWidth);
-            bar.setTopRight(new Point((WIDTH / 2) + (barWidth / 2), HEIGHT - 60));
-            bar.setBottomRight(new Point((WIDTH / 2) + (barWidth / 2), HEIGHT - 60 + BAR_HEIGHT));
+            r.setX(bar.getTopLeft().x);
         }
+        System.out.println(barWidth);
     }
 
     private void gotoxy(double x, double y) {
@@ -544,8 +574,8 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         }
         if (isGameOver && event.getCode() == KeyCode.ENTER) {
             if (levelCleared) {
-                root = setupGame(STAGE_NB+1);
-                System.out.println("stage " + (STAGE_NB+1));
+                root = setupGame(STAGE_NB + 1);
+                System.out.println("stage " + (STAGE_NB + 1));
             } else {
                 root = setupGame(STAGE_NB);
                 System.out.println("stage " + STAGE_NB);
