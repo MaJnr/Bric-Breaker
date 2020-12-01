@@ -86,7 +86,9 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
     //drops list
     Drop drop;
-    List<Drop> dropList = new ArrayList<>();
+    List<Integer> dropIndexes = new ArrayList<>();
+    List<Drop> cettefoiscestlabonne;
+    private double DROP_FALLING_SPEED = 0.5;
 
     @Override
     public void start(Stage primaryStage) {
@@ -129,7 +131,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
 
     private void refreshScene() {
-        gotoxy(x, y);
+        moveBallTo(x, y);
 
 
         //bar position
@@ -266,7 +268,6 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 //triggers drop effect if exists
 
                 if (bricksList.get(p).getDrop() != null) {
-                    dropList.add(bricksList.get(p).getDrop());
                     drop = bricksList.get(p).getDrop();
                 }
 
@@ -366,41 +367,43 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         //---------------------------------------------------------
 
         //------------------------DROPS----------------------------
+        //getting the elements that might be deleted
+        int temp = cettefoiscestlabonne.size();
+        Drop tmpDrop = null;
+        if (!cettefoiscestlabonne.isEmpty()) {
+            tmpDrop = cettefoiscestlabonne.get(cettefoiscestlabonne.size()-1);
+            for (Drop d : cettefoiscestlabonne) {
+                dropFall(d);
+            }
+        }
 
         if (drop != null) {
-            root.getChildren().add(drop.getCircle());
-            String effect = drop.getEffect();
-            switch (effect) {
-                case "increaseBarSize":
-                    barWidth += 50;
-                    setupBar(barWidth);
-                    break;
-                case "decreaseBarSize":
-                    if (barWidth > 100) {
-                        barWidth -= 50;
-                        setupBar(barWidth);
-                    }
-                    break;
-                case "increaseBarSpeed":
-                    barSpeed += 2;
-                    break;
-                case "decreaseBarSpeed":
-                    if (barSpeed < 3)
-                        barSpeed -= 2;
-                    break;
-                case "increaseBallSpeed":
-                    ySpeed++;
-                    break;
-                case "decreaseBallSpeed":
-                    if (ySpeed > 1)
-                        ySpeed--;
-                    break;
-                default:
-                    System.out.println("erreur: pas d'effet");
-                    break;
-            }
-            System.out.println(effect);
+            //store the drop
+            cettefoiscestlabonne.add(drop);
             drop = null;
+        }
+
+        //drop falling
+//        if (!dropIndexes.isEmpty()) {
+//            Integer i = null;
+//            List<Circle> tmpList = new ArrayList<>();
+//            for (Integer d : dropIndexes) {
+//                i = d;
+//                Circle dropCircle = (Circle) root.getChildren().get(d);
+//                tmpList.add(dropCircle);
+//                dropFall(dropCircle);
+//                System.out.println(dropIndexes.size());
+//            }
+//            dropIndexes.remove(i);
+//        }
+
+        if (cettefoiscestlabonne.size() != temp) {
+            // a drop just dropped
+            if (cettefoiscestlabonne.size() > temp) {
+                root.getChildren().add(cettefoiscestlabonne.get(temp).getCircle());
+            } else
+            // a drop just disappeared
+            root.getChildren().remove(tmpDrop.getCircle());
         }
 
         //---------------------------------------------------------
@@ -425,6 +428,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
     private void drawGameOver() {
         timeline.pause();
+
 
         //draw different messages depending if level is cleared or not
         if (!levelCleared) {
@@ -455,6 +459,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         barWidth = 200;
         nodeList = new ArrayList<>();
         bricksList = new ArrayList<>();
+        cettefoiscestlabonne = new ArrayList<>();
         // lines
         if (stageNumber == 2) {
             for (int i = 0; i < 20; i++) {
@@ -548,7 +553,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         System.out.println(barWidth);
     }
 
-    private void gotoxy(double x, double y) {
+    private void moveBallTo(double x, double y) {
         c.setCenterX(x);
         c.setCenterY(y);
     }
@@ -605,4 +610,51 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         tmpBar.setX(tmpBar.getX() + direction);
         bar.doTranslation(direction);
     }
+
+    public void dropFall(Drop dropCircle) {
+        if (dropCircle.getCircle().getCenterY() <= HEIGHT - 60) {
+            dropCircle.getCircle().setCenterY(dropCircle.getCircle().getCenterY() + DROP_FALLING_SPEED);
+        } else {
+            popEffect(dropCircle);
+            dropCircle.setEffectPop(true);
+        }
+    }
+
+    private void popEffect(Drop dropCircle) {
+        if (dropCircle.isEffectPop())
+            return;
+
+        String effect = dropCircle.getEffect();
+        switch (effect) {
+            case "increaseBarSize":
+                barWidth += 50;
+                setupBar(barWidth);
+                break;
+            case "decreaseBarSize":
+                if (barWidth > 100) {
+                    barWidth -= 50;
+                    setupBar(barWidth);
+                }
+                break;
+            case "increaseBarSpeed":
+                barSpeed += 2;
+                break;
+            case "decreaseBarSpeed":
+                if (barSpeed < 3)
+                    barSpeed -= 2;
+                break;
+            case "increaseBallSpeed":
+                ySpeed++;
+                break;
+            case "decreaseBallSpeed":
+                if (ySpeed > 1)
+                    ySpeed--;
+                break;
+            default:
+                System.out.println("erreur: pas d'effet");
+                break;
+        }
+        System.out.println(effect);
+    }
+
 }

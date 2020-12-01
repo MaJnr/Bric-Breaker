@@ -24,14 +24,16 @@ public class Drop {
     private String effect;
     private String[] bonusEffectArray = {"increaseBarSize", "decreaseBallSpeed", "increaseBarSpeed"};
     private String[] malusEffectArray = {"decreaseBarSize", "increaseBallSpeed", "decreaseBarSpeed"};
+    private boolean effectPop;
 
     private Circle circle;
-
     private Point middle;
+
     public Drop(Point middle) {
         setRandomEffect(BONUS_CHANCE);
         this.middle = middle;
         drawDrop();
+        effectPop = false;
     }
 
     public void drawDrop() {
@@ -84,5 +86,13 @@ public class Drop {
 
     public void setCircle(Circle circle) {
         this.circle = circle;
+    }
+
+    public boolean isEffectPop() {
+        return effectPop;
+    }
+
+    public void setEffectPop(boolean effectPop) {
+        this.effectPop = effectPop;
     }
 }
