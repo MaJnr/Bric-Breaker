@@ -23,6 +23,8 @@ import java.awt.*;
 import java.util.*;
 import java.util.List;
 
+import static java.lang.Math.*;
+
 
 public class Main extends Application implements EventHandler<KeyEvent> {
 
@@ -67,8 +69,11 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     //0 -> none
     //1 -> right
     //2 -> left
+    //3 -> both, then stop
     int keyPressedState = 0;
     boolean isShooting = false;
+    boolean rightPressed = false;
+    boolean leftPressed = false;
 
     //game over screen
     private boolean isGameOver = false;
@@ -89,6 +94,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     List<Integer> dropIndexes = new ArrayList<>();
     List<Drop> cettefoiscestlabonne;
     private double DROP_FALLING_SPEED = 0.5;
+    private boolean needToBeDeleted = false;
 
     @Override
     public void start(Stage primaryStage) {
@@ -118,9 +124,27 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         //keyboard listener
         scene.setOnKeyPressed(this);
         scene.setOnKeyReleased(event -> {
-            if (event.getCode() == KeyCode.RIGHT || event.getCode() == KeyCode.LEFT) {
+
+            if (event.getCode() == KeyCode.RIGHT) {
+                if (leftPressed) {
+                    keyPressedState = 2;
+                }
+                rightPressed = false;
+                //   System.out.println("right released");
+            }
+            if (event.getCode() == KeyCode.LEFT) {
+                if (rightPressed) {
+                    keyPressedState = 1;
+                }
+                leftPressed = false;
+                //  System.out.println("left released");
+
+            }
+
+            if (!rightPressed && !leftPressed) {
                 keyPressedState = 0;
             }
+
             if (event.getCode() == KeyCode.SPACE) {
                 isShooting = false;
             }
@@ -186,54 +210,25 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             }
             //if the level is cleared this statement is never reached
             levelCleared = false;
-       /*         //todo: check diagonal hits (ball currently considered as a square)
-                //oriented square (diamond) test
-                boolean diamondDelete = false;
-                if (bricksList.get(p).getTopLeft().y <= y+RADIUS*(-Math.sqrt(2)/2) && bricksList.get(p).getTopLeft().x <= x+RADIUS*(Math.sqrt(2)/2) && !upDirection && rightDirection) {
-                    if (bricksList.get(p).getBottomRight().y >= y+RADIUS*(-Math.sqrt(2)/2) && bricksList.get(p).getBottomRight().x >= x+RADIUS*(Math.sqrt(2)/2)) {
-                        x-=xSpeed;
-                        y-=ySpeed;
-                        upDirection = true;
-                        rightDirection = false;
-                        diamondDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getTopRight().y <= y+RADIUS*(-Math.sqrt(2)/2) && bricksList.get(p).getTopRight().x >= x+RADIUS*(-Math.sqrt(2)/2) && !upDirection && !rightDirection) {
-                    if (bricksList.get(p).getBottomLeft().y >= y+RADIUS*(-Math.sqrt(2)/2) && bricksList.get(p).getBottomLeft().x <= x+RADIUS*(-Math.sqrt(2)/2)) {
-                        x+=xSpeed;
-                        y-=ySpeed;
-                        upDirection = true;
-                        rightDirection = true;
-                        diamondDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getBottomRight().y >= y+RADIUS*(Math.sqrt(2)/2) && bricksList.get(p).getBottomRight().x >= x+RADIUS*(-Math.sqrt(2)/2) && upDirection && !rightDirection) {
-                    if (bricksList.get(p).getTopLeft().y <= y+RADIUS*(Math.sqrt(2)/2) && bricksList.get(p).getTopLeft().x <= x+RADIUS*(-Math.sqrt(2)/2)) {
-                        x+=xSpeed;
-                        y+=ySpeed;
-                        upDirection = false;
-                        rightDirection = true;
-                        diamondDelete = true;
-                    }
-                }
-                if (bricksList.get(p).getBottomLeft().y >= y+RADIUS*(Math.sqrt(2)/2) && bricksList.get(p).getBottomLeft().x <= x+RADIUS*(Math.sqrt(2)/2) && upDirection && rightDirection) {
-                    if (bricksList.get(p).getTopRight().y <= y+RADIUS*(Math.sqrt(2)/2) && bricksList.get(p).getTopRight().x >= x+RADIUS*(Math.sqrt(2)/2)) {
-                        x-=xSpeed;
-                        y+=ySpeed;
-                        upDirection = false;
-                        rightDirection = false;
-                        diamondDelete = true;
-                    }
-                }*/
-          /*          if (diamondDelete) {
-                        System.out.println("diamond delete");
-                        root.getChildren().remove(nodeList.get(p));
-//                    bricksList.remove(bricksList.get(p));
-//                    nodeList.remove(nodeList.get(p));
-                        bricksList.set(p, null);
-                        nodeList.set(p, null);
-                    } else {*/
+            //todo: check diagonal hits (ball currently considered as a square)
+
             boolean squareDelete = false;
+
+            ///////WIP///////
+          /*  if (isInside(bricksList.get(p))) {
+                System.out.println("bounce");
+                squareDelete = true;
+                if (y != 0) {
+                    upDirection = !upDirection;
+                    y -= ySpeed;
+                } else
+                if (x != 0) {
+                    rightDirection = !rightDirection;
+                    x -= xSpeed;
+                }
+            }*/
+            ////////////////
+
             if (bricksList.get(p).getBottomLeft().y >= y - RADIUS && bricksList.get(p).getTopLeft().y <= y - RADIUS && upDirection) {
                 if (bricksList.get(p).getBottomLeft().x <= x && bricksList.get(p).getBottomRight().x >= x) {
                     y += ySpeed;
@@ -326,6 +321,12 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x) {
                 y -= ySpeed;
                 upDirection = true;
+                System.out.println("xspeed : " + xSpeed);
+                if (xSpeed == 0) {
+                    xSpeed++;
+                    //x -= xSpeed;
+
+                }
                 if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS < bar.getTopLeft().x + (barWidth / 4)) {
                     //if hit on the quarter left
                     x -= xSpeed;
@@ -369,11 +370,16 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         //------------------------DROPS----------------------------
         //getting the elements that might be deleted
         int temp = cettefoiscestlabonne.size();
-        Drop tmpDrop = null;
         if (!cettefoiscestlabonne.isEmpty()) {
-            tmpDrop = cettefoiscestlabonne.get(cettefoiscestlabonne.size()-1);
             for (Drop d : cettefoiscestlabonne) {
                 dropFall(d);
+            }
+            if (needToBeDeleted) {
+                //todo: bug : when too much (how much ?) drops are grouped and one is deleted (bar or bottom hit), all drops from the group are deleted
+                //removes the last element that was added
+                needToBeDeleted = false;
+                root.getChildren().remove(cettefoiscestlabonne.get(0).getCircle());
+                cettefoiscestlabonne.remove(0);
             }
         }
 
@@ -398,17 +404,58 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 //        }
 
         if (cettefoiscestlabonne.size() != temp) {
-            // a drop just dropped
             if (cettefoiscestlabonne.size() > temp) {
+                // a drop just appeared
                 root.getChildren().add(cettefoiscestlabonne.get(temp).getCircle());
-            } else
-            // a drop just disappeared
-            root.getChildren().remove(tmpDrop.getCircle());
+            } else {
+                // a drop just disappeared
+                //root.getChildren().remove(tmpDrop.getCircle());
+            }
         }
 
         //---------------------------------------------------------
 
         // System.out.println(xSpeed + " " + ySpeed);
+    }
+
+    //return true if ball is inside a brick
+    private boolean isInside(Brick b) {
+        List<Point> pointsList = listAllPoints(b);
+
+        // equation to determine if a point of the brick is on the ball perimeter
+       /* for (Point p : pointsList) {
+            if (pow(p.getX() - x,  2) + pow(p.getY() - y, 2) == pow(RADIUS, 2)) {
+                System.out.println("collision");
+                return true;
+            }
+        }*/
+        if (pow(b.getTopRight().getX() - x, 2) + pow(b.getTopRight().getY() - y, 2) == pow(RADIUS, 2)
+                || pow(b.getBottomRight().getX() - x, 2) + pow(b.getBottomRight().getY() - y, 2) == pow(RADIUS, 2)
+                || pow(b.getBottomLeft().getX() - x, 2) + pow(b.getBottomLeft().getY() - y, 2) == pow(RADIUS, 2)
+                || pow(b.getTopLeft().getX() - x, 2) + pow(b.getTopLeft().getY() - y, 2) == pow(RADIUS, 2)) {
+            System.out.println("collision");
+            return true;
+        }
+        return false;
+    }
+
+    private List<Point> listAllPoints(Brick b) {
+        // lists all points (integers) of the brick
+        // angles are duplicate
+        List<Point> resultTab = new ArrayList<>();
+        for (int right = 0; right < 20; right++) {
+            resultTab.add(new Point(b.getTopRight().x, b.getTopRight().y + right));
+        }
+        for (int bottom = 0; bottom < 80; bottom++) {
+            resultTab.add(new Point(b.getBottomRight().x - bottom, b.getBottomRight().y));
+        }
+        for (int left = 0; left < 20; left++) {
+            resultTab.add(new Point(b.getBottomLeft().x, b.getBottomLeft().y - left));
+        }
+        for (int top = 0; top < 80; top++) {
+            resultTab.add(new Point(b.getTopLeft().x + top, b.getTopLeft().y));
+        }
+        return resultTab;
     }
 
     private void drawArrow(boolean toTheRight) {
@@ -454,7 +501,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         //todo: use class brick with all properties
 
         xSpeed = 1;
-        ySpeed = 1;
+        ySpeed = 2;
         barSpeed = 5;
         barWidth = 200;
         nodeList = new ArrayList<>();
@@ -484,7 +531,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         } else {
             for (int i = 0; i < 20; i++) {
                 // columns
-                for (int j = 0; j < 20; j++) {
+                for (int j = 0; j < 10; j++) {
                     if ((i + j) % 2 == 0) {
                         continue;
                     }
@@ -567,12 +614,21 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         //get the bar element
 
         //  Rectangle tmpBar = (Rectangle) nodeList.get(bricksList.size());
-
         if (event.getCode() == KeyCode.RIGHT) {
-            keyPressedState = 1;
+            rightPressed = true;
+            if (!leftPressed) {
+                keyPressedState = 1;
+            } else {
+                keyPressedState = 0;
+            }
         }
         if (event.getCode() == KeyCode.LEFT) {
-            keyPressedState = 2;
+            leftPressed = true;
+            if (!rightPressed) {
+                keyPressedState = 2;
+            } else {
+                keyPressedState = 0;
+            }
         }
         if (event.getCode() == KeyCode.SPACE) {
             isShooting = true;
@@ -612,11 +668,20 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     }
 
     public void dropFall(Drop dropCircle) {
-        if (dropCircle.getCircle().getCenterY() <= HEIGHT - 60) {
+        if (dropCircle.getCircle().getCenterY() <= HEIGHT) {
             dropCircle.getCircle().setCenterY(dropCircle.getCircle().getCenterY() + DROP_FALLING_SPEED);
         } else {
+            // cettefoiscestlabonne.remove(dropCircle);
+            root.getChildren().remove(dropCircle.getCircle());
+            needToBeDeleted = true;
+        }
+        if (dropCircle.getCircle().getCenterX() - 5 <= bar.getTopRight().getX()
+                && dropCircle.getCircle().getCenterX() + 5 >= bar.getTopLeft().getX()
+                && dropCircle.getCircle().getCenterY() + 5 >= HEIGHT - 60
+                && dropCircle.getCircle().getCenterY() - 5 <= HEIGHT - 60 + BAR_HEIGHT) {
             popEffect(dropCircle);
             dropCircle.setEffectPop(true);
+            needToBeDeleted = true;
         }
     }
 
@@ -655,6 +720,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 break;
         }
         System.out.println(effect);
+        // needToDrop = true;
     }
 
 }
