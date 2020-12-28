@@ -1,14 +1,17 @@
 package sample;
 
+import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.scene.CacheHint;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.paint.Color;
@@ -17,9 +20,13 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import javafx.scene.image.*;
 
 
 import java.awt.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.util.*;
 import java.util.List;
 
@@ -78,6 +85,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     //game over screen
     private boolean isGameOver = false;
     Label l;
+    private boolean hasGameStarted = false;
 
     Stage primaryStage;
 
@@ -96,6 +104,24 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     private double DROP_FALLING_SPEED = 0.5;
     private boolean needToBeDeleted = false;
 
+    //effects icons when theirs effects are triggered
+    Image increaseBarSpeedImg;
+    Image decreaseBarSpeedImg;
+    Image increaseBarSizeImg;
+    Image decreaseBarSizeImg;
+    Image increaseBallSpeedImg;
+    Image decreaseBallSpeedImg;
+    private int nbOfIcons = 0;
+
+    //commands icons
+    Image commandsIcons;
+    Image resumeIcon;
+    private ImageView iv;
+    private ImageView view;
+    private Label pauseLabel;
+    private Label gameOverLabel;
+    private Image enterIcon;
+
     @Override
     public void start(Stage primaryStage) {
         root = setupGame(STAGE_NB);
@@ -112,8 +138,28 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         primaryStage.setScene(setupScene());
         primaryStage.setResizable(false);
 
+        //loads the effects icons
+        try {
+            loadIcons();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
         this.primaryStage = primaryStage;
         primaryStage.show();
+        try {
+            commandsIcons = new Image(new FileInputStream("src/resources/commandsIcons2.png"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        //image view
+        iv = new ImageView(commandsIcons);
+        iv.setLayoutX(WIDTH - 200);
+        iv.setLayoutY(HEIGHT - 50);
+        root.getChildren().add(iv);
+
+        //hasGameStarted = true;
         timeline.play();
     }
 
@@ -140,16 +186,21 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 //  System.out.println("left released");
 
             }
-
             if (!rightPressed && !leftPressed) {
                 keyPressedState = 0;
             }
-
             if (event.getCode() == KeyCode.SPACE) {
                 isShooting = false;
             }
         });
         drawArrow(true);
+
+        //image view
+        iv = new ImageView(commandsIcons);
+        iv.setLayoutX(WIDTH - 200);
+        iv.setLayoutY(HEIGHT - 50);
+        root.getChildren().add(iv);
+
         return scene;
     }
 
@@ -193,6 +244,20 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             //todo: fix shoot rate lmao
             System.out.println("SHOOT");
             isGameWaiting = false;
+            hasGameStarted = true;
+
+            //remove commands icons
+            if (iv != null) {
+                FadeTransition ft = new FadeTransition(Duration.millis(3000), iv);
+                ft.setFromValue(1.0);
+                ft.setToValue(0);
+                ft.setOnFinished(event -> {
+                    root.getChildren().remove(iv);
+                    iv = null;
+                });
+                ft.play();
+            }
+
             if (arrowDrawn) {
                 root.getChildren().remove(line);
                 arrowDrawn = false;
@@ -201,7 +266,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         if (isGameWaiting) {
             return;
         }
-
+        //hasGameStarted = true;
         levelCleared = true;
         //state of the next frame
         for (int p = 0; p < bricksList.size(); p++) {
@@ -321,7 +386,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x) {
                 y -= ySpeed;
                 upDirection = true;
-                System.out.println("xspeed : " + xSpeed);
+               // System.out.println("xspeed : " + xSpeed);
                 if (xSpeed == 0) {
                     xSpeed++;
                     //x -= xSpeed;
@@ -475,7 +540,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
     private void drawGameOver() {
         timeline.pause();
-
+        hasGameStarted = false;
 
         //draw different messages depending if level is cleared or not
         if (!levelCleared) {
@@ -483,16 +548,39 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             l.setTextFill(Color.RED);
             l.setLayoutY(HEIGHT / 2. - 100);
             l.setLayoutX(WIDTH / 2. - 270);
+
+            //retry label
+            gameOverLabel = new Label("Réessayer");
+            gameOverLabel.setLayoutY(HEIGHT / 2. + 25);
+            gameOverLabel.setLayoutX(WIDTH / 2. - 200);
         } else {
             l = new Label("STAGE CLEARED");
             l.setTextFill(Color.GREEN);
             l.setLayoutY(HEIGHT / 2. - 100);
             l.setLayoutX(WIDTH / 2. - 350);
-        }
 
+            //next level label
+            gameOverLabel = new Label("Continuer");
+            gameOverLabel.setLayoutY(HEIGHT / 2. + 25);
+            gameOverLabel.setLayoutX(WIDTH / 2. - 150);
+        }
         l.setStyle("-fx-font-family: 'OCR A Extended'; -fx-font-size: 100; -fx-font-weight: bold");
+        gameOverLabel.setStyle("-fx-font-family: 'OCR A Extended'; -fx-font-size: 50;");
+
+        //enter icon
+        try {
+            enterIcon = new Image(new FileInputStream("src/resources/enterIcon.png"));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        ImageView enterImage = new ImageView(enterIcon);
+        enterImage.setLayoutY(HEIGHT / 2. + 25);
+        enterImage.setLayoutX(WIDTH / 2. + 150);
 
         root.getChildren().add(l);
+        root.getChildren().add(gameOverLabel);
+        root.getChildren().add(enterImage);
+
         isGameOver = true;
         isGameWaiting = true;
     }
@@ -532,7 +620,8 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             for (int i = 0; i < 20; i++) {
                 // columns
                 for (int j = 0; j < 10; j++) {
-                    if ((i + j) % 2 == 0) {
+                    if (i != 10 || j != 9) {
+                        //(i + j) % 2 == 0
                         continue;
                     }
 
@@ -648,7 +737,43 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             upDirection = true;
             rightDirection = true;
             primaryStage.setScene(setupScene());
+          //  hasGameStarted = true;
             timeline.play();
+        }
+        if (event.getCode() == KeyCode.ESCAPE) {
+            if (!isGameWaiting && hasGameStarted) {
+                isGameWaiting = true;
+                timeline.pause();
+
+                //draw resume button hint
+                try {
+                    resumeIcon = new Image(new FileInputStream("src/resources/resume.png"));
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+                //pause text
+                pauseLabel = new Label("PAUSE");
+                pauseLabel.setLayoutY(HEIGHT / 2. - 100);
+                pauseLabel.setLayoutX(WIDTH / 2. - 150);
+                pauseLabel.setStyle("-fx-font-family: 'OCR A Extended'; -fx-font-size: 100; -fx-font-weight: bold");
+
+                view = new ImageView(resumeIcon);
+                view.setLayoutY(HEIGHT / 2.);
+                view.setLayoutX(WIDTH / 2. - 75);
+                root.getChildren().add(view);
+                root.getChildren().add(pauseLabel);
+
+            } else if (hasGameStarted) {
+                if (view != null && pauseLabel != null) {
+                    root.getChildren().remove(view);
+                    root.getChildren().remove(pauseLabel);
+                    view = null;
+                    pauseLabel = null;
+                }
+                timeline.play();
+                isGameWaiting = false;
+            }
         }
 
         //debug only
@@ -694,26 +819,32 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             case "increaseBarSize":
                 barWidth += 50;
                 setupBar(barWidth);
+                playIconAnimation(increaseBarSizeImg);
                 break;
             case "decreaseBarSize":
                 if (barWidth > 100) {
                     barWidth -= 50;
                     setupBar(barWidth);
                 }
+                playIconAnimation(decreaseBarSizeImg);
                 break;
             case "increaseBarSpeed":
                 barSpeed += 2;
+                playIconAnimation(increaseBarSpeedImg);
                 break;
             case "decreaseBarSpeed":
                 if (barSpeed < 3)
                     barSpeed -= 2;
+                playIconAnimation(decreaseBarSpeedImg);
                 break;
             case "increaseBallSpeed":
                 ySpeed++;
+                playIconAnimation(increaseBallSpeedImg);
                 break;
             case "decreaseBallSpeed":
                 if (ySpeed > 1)
                     ySpeed--;
+                playIconAnimation(decreaseBallSpeedImg);
                 break;
             default:
                 System.out.println("erreur: pas d'effet");
@@ -723,4 +854,54 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         // needToDrop = true;
     }
 
+    // loads the effects icons
+    public void loadIcons() throws FileNotFoundException {
+       // inputIncreaseBarSpeed = new FileInputStream("src/resources/test.png");
+        increaseBarSpeedImg = new Image(new FileInputStream("src/resources/barSpeedUp.png"));
+        decreaseBarSpeedImg = new Image(new FileInputStream("src/resources/barSpeedDown.png"));
+        increaseBarSizeImg = new Image(new FileInputStream("src/resources/barSizeUp3.png"));
+        decreaseBarSizeImg = new Image(new FileInputStream("src/resources/barSizeDown3.png"));
+        increaseBallSpeedImg = new Image(new FileInputStream("src/resources/ballSpeedUp.png"));
+        decreaseBallSpeedImg = new Image(new FileInputStream("src/resources/ballSpeedDown.png"));
+
+
+
+
+          //  root.getChildren().remove(imageView);
+    }
+
+    public void playIconAnimation(Image img) {
+        // GIVE THE IMAGE TO THE IMAGE VIEW (IMPLEMENT IN DROP TRIGGERED EFFECT)
+        //todo: bug : icons dont display sometimes
+        nbOfIcons++;
+        for (int i = 0; i < nbOfIcons; i++) {
+            System.out.println("nb of icons : " + nbOfIcons);
+            ImageView imageView = new ImageView(img);
+            // the icons stacks one on top of the others
+            imageView.setLayoutY(HEIGHT - 50*nbOfIcons);
+            imageView.setLayoutX(30);
+
+            FadeTransition ft = new FadeTransition(Duration.millis(3000), imageView);
+            ft.setFromValue(1.0);
+            ft.setToValue(0);
+            //ft.setCycleCount(1);
+            // ft.setAutoReverse(true);
+            ft.setOnFinished(event -> {
+                root.getChildren().remove(imageView);
+                //imageView.setImage(null);
+                nbOfIcons--;
+                System.out.println("icon deleted");
+            });
+            root.getChildren().add(imageView);
+            ft.play();
+
+        }
+        // System.out.println("icon already used");
+//            ImageView imageView2 = imageView;
+//            imageView2.setImage(img);
+//            imageView2.setLayoutY(imageView.getLayoutY() - 50);
+//            root.getChildren().add(imageView2);
+
+
+    }
 }
