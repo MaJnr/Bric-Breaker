@@ -4,7 +4,7 @@ import javafx.animation.FadeTransition;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Application;
-import javafx.event.ActionEvent;
+import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.scene.CacheHint;
 import javafx.scene.Group;
@@ -19,12 +19,12 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 import javafx.util.Duration;
 import javafx.scene.image.*;
 
 
 import java.awt.*;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.util.*;
@@ -35,7 +35,8 @@ import static java.lang.Math.*;
 
 public class Main extends Application implements EventHandler<KeyEvent> {
 
-    private static final int STAGE_NB = 0;
+    private static int STAGE_NB = 0;
+    private static final int LASER_SPEED = 3;
     final int HEIGHT = 900;
     final int WIDTH = 1600;
     final int RADIUS = 10;
@@ -101,7 +102,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     Drop drop;
     List<Integer> dropIndexes = new ArrayList<>();
     List<Drop> cettefoiscestlabonne;
-    private double DROP_FALLING_SPEED = 0.5;
+    private final double DROP_FALLING_SPEED = 0.5;
     private boolean needToBeDeleted = false;
 
     //effects icons when theirs effects are triggered
@@ -121,6 +122,24 @@ public class Main extends Application implements EventHandler<KeyEvent> {
     private Label pauseLabel;
     private Label gameOverLabel;
     private Image enterIcon;
+
+    //weapon drop
+    private static final int SHOOT_BONUS_DURATION = 10;
+    private boolean hasWeaponBonus = false;
+    Timer weaponBonusTimer;
+    CustomTimerTask customTimerTask;
+    private Rectangle leftWeapon;
+    private Rectangle rightWeapon;
+    List<Rectangle> newLasersList;
+    private Rectangle leftLaser;
+    private Rectangle rightLaser;
+    private ArrayList<Rectangle> onScreenLasersList;
+
+    //no brick touched timer
+
+    private final long NO_BRICK_TOUCHED_PERIOD = 30;
+    private Timer boringBonusTimer;
+    private TimerTask giveWeaponBonusTask;
 
     @Override
     public void start(Stage primaryStage) {
@@ -147,6 +166,18 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
         this.primaryStage = primaryStage;
         primaryStage.show();
+
+        //end all threads before closing
+        primaryStage.setOnCloseRequest(event -> {
+            System.out.println("purge");
+            if (customTimerTask != null && weaponBonusTimer != null) {
+                timeline.stop();
+                customTimerTask = null;
+                weaponBonusTimer.purge();
+                System.exit(1);
+            }
+        });
+
         try {
             commandsIcons = new Image(new FileInputStream("src/resources/commandsIcons2.png"));
         } catch (FileNotFoundException e) {
@@ -240,9 +271,41 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             default:
                 break;
         }
+
+        //-------------------SHOOTING AND WEAPON DROP------------------------
+        if (weaponBonusTimer != null && customTimerTask != null) {
+//            System.out.println("timer nut null");
+            if (!customTimerTask.isTimerEnded) {
+                //draw weapons
+                leftWeapon.setX(bar.getTopLeft().x + 5);
+                rightWeapon.setX(bar.getTopRight().x - 15);
+            } else {
+                // System.out.println("timer ended ");
+                hasWeaponBonus = false;
+                root.getChildren().remove(leftWeapon);
+                root.getChildren().remove(rightWeapon);
+                leftWeapon = null;
+                rightWeapon = null;
+                customTimerTask.cancel();
+                // customTimerTask = null;
+            }
+        }
         if (isShooting) {
-            //todo: fix shoot rate lmao
-            System.out.println("SHOOT");
+            if (customTimerTask != null && hasWeaponBonus) {
+
+                if (customTimerTask.aBoolean) {
+                    System.out.println("PEW");
+                    shoot();
+                    for (Rectangle r : newLasersList) {
+                        root.getChildren().add(r);
+                        onScreenLasersList.add(r);
+                    }
+                    for (Rectangle r : onScreenLasersList) {
+                        newLasersList.remove(r);
+                    }
+                    customTimerTask.aBoolean = false;
+                }
+            }
             isGameWaiting = false;
             hasGameStarted = true;
 
@@ -261,12 +324,19 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             if (arrowDrawn) {
                 root.getChildren().remove(line);
                 arrowDrawn = false;
+
+                // start timer on game start (at the same time as the arrow is removed)
+                createWeaponTimerTask();
+                boringBonusTimer.schedule(giveWeaponBonusTask, NO_BRICK_TOUCHED_PERIOD * 1000);
             }
         }
+
+        //------------------------------------------------------------
+
         if (isGameWaiting) {
             return;
         }
-        //hasGameStarted = true;
+
         levelCleared = true;
         //state of the next frame
         for (int p = 0; p < bricksList.size(); p++) {
@@ -323,7 +393,6 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 }
             }
 
-
             if (squareDelete) {
                 //triggers drop effect if exists
 
@@ -334,8 +403,60 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 root.getChildren().remove(nodeList.get(p));
                 bricksList.set(p, null);
                 nodeList.set(p, null);
+
+                resetBoringTimer();
+
             }
-            //  }
+        }
+
+        // LASERS HITS
+        List<Rectangle> tempList = new ArrayList<>();
+
+        for (Rectangle r : onScreenLasersList) {
+            //move laser
+            r.setY(r.getY() - LASER_SPEED);
+
+            for (int p = 0; p < bricksList.size(); p++) {
+                if (bricksList.get(p) == null) {
+                    continue;
+                }
+                boolean removeBrick = false;
+
+                //level border
+                if (r.getY() <= 0) {
+                    tempList.add(r);
+                    root.getChildren().remove(r);
+                    continue;
+                }
+
+                if (bricksList.get(p).getBottomLeft().y >= r.getY() && bricksList.get(p).getTopLeft().y <= r.getY()) {
+                    if (bricksList.get(p).getBottomLeft().x <= r.getX() && bricksList.get(p).getBottomRight().x >= r.getX()) {
+                        removeBrick = true;
+                        //todo: fix :laser is reseted (need to create an other, not modify it)
+                        // idk where the code goes
+
+                        System.out.println("HEADSHOOT");
+                        root.getChildren().remove(r);
+                        tempList.add(r);
+                    }
+                }
+                if (removeBrick) {
+                    //triggers drop effect if exists
+
+                    if (bricksList.get(p).getDrop() != null) {
+                        drop = bricksList.get(p).getDrop();
+                    }
+
+                    root.getChildren().remove(nodeList.get(p));
+                    bricksList.set(p, null);
+                    nodeList.set(p, null);
+                    resetBoringTimer();
+                }
+            }
+        }
+
+        for (Rectangle r : tempList) {
+            onScreenLasersList.remove(r);
         }
 
         if (levelCleared) {
@@ -386,7 +507,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             if (x + RADIUS >= bar.getTopLeft().x && x + RADIUS <= bar.getBottomRight().x) {
                 y -= ySpeed;
                 upDirection = true;
-               // System.out.println("xspeed : " + xSpeed);
+                // System.out.println("xspeed : " + xSpeed);
                 if (xSpeed == 0) {
                     xSpeed++;
                     //x -= xSpeed;
@@ -441,6 +562,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             }
             if (needToBeDeleted) {
                 //todo: bug : when too much (how much ?) drops are grouped and one is deleted (bar or bottom hit), all drops from the group are deleted
+                // when 2 (ore more) drops are spawning at the same time, only one is created
                 //removes the last element that was added
                 needToBeDeleted = false;
                 root.getChildren().remove(cettefoiscestlabonne.get(0).getCircle());
@@ -477,6 +599,9 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                 //root.getChildren().remove(tmpDrop.getCircle());
             }
         }
+
+        //if no brick has been touched for x time, gives a weapon bonus
+
 
         //---------------------------------------------------------
 
@@ -583,6 +708,16 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 
         isGameOver = true;
         isGameWaiting = true;
+
+        //end all potential threads (weapon bonus)
+        if (customTimerTask != null && weaponBonusTimer != null) {
+            customTimerTask = null;
+            weaponBonusTimer.cancel();
+        }
+        if (boringBonusTimer != null && giveWeaponBonusTask != null) {
+            boringBonusTimer.cancel();
+            giveWeaponBonusTask.cancel();
+        }
     }
 
     public Group setupGame(int stageNumber) {
@@ -596,13 +731,10 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         bricksList = new ArrayList<>();
         cettefoiscestlabonne = new ArrayList<>();
         // lines
-        if (stageNumber == 2) {
+        if (stageNumber == 0) {
             for (int i = 0; i < 20; i++) {
                 // columns
-                for (int j = 0; j < 20; j++) {
-                    if (j != 10) {
-                        continue;
-                    }
+                for (int j = 2; j < 5; j++) {
 
                     Rectangle r = new Rectangle(i * 80 + 3, j * 20 + 3, 80, 20);
                     r.setStroke(Color.BLACK);
@@ -620,8 +752,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             for (int i = 0; i < 20; i++) {
                 // columns
                 for (int j = 0; j < 10; j++) {
-                    if (i != 10 || j != 9) {
-                        //(i + j) % 2 == 0
+                    if ((i + j) % 2 == 0) {
                         continue;
                     }
 
@@ -650,6 +781,13 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         setupBar(barWidth);
         nodeList.add(r);
         nodeList.add(c);
+
+        //creation of lasers list
+        newLasersList = new ArrayList<>();
+        onScreenLasersList = new ArrayList<>();
+
+        //no bar touched for too long timer
+        boringBonusTimer = new Timer();
 
         return new Group(nodeList);
     }
@@ -724,12 +862,11 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         }
         if (isGameOver && event.getCode() == KeyCode.ENTER) {
             if (levelCleared) {
-                root = setupGame(STAGE_NB + 1);
-                System.out.println("stage " + (STAGE_NB + 1));
-            } else {
-                root = setupGame(STAGE_NB);
-                System.out.println("stage " + STAGE_NB);
+                STAGE_NB++;
             }
+            root = setupGame(STAGE_NB);
+            System.out.println("stage " + STAGE_NB);
+
             //reset of every element
             isGameOver = false;
             x = WIDTH / 2;
@@ -737,7 +874,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             upDirection = true;
             rightDirection = true;
             primaryStage.setScene(setupScene());
-          //  hasGameStarted = true;
+            //  hasGameStarted = true;
             timeline.play();
         }
         if (event.getCode() == KeyCode.ESCAPE) {
@@ -846,6 +983,15 @@ public class Main extends Application implements EventHandler<KeyEvent> {
                     ySpeed--;
                 playIconAnimation(decreaseBallSpeedImg);
                 break;
+            case "temporaryWeapon":
+                System.out.println("DAMN SON WHERE D'YA FIND THIS ?");
+
+                customTimerTask = new CustomTimerTask(hasWeaponBonus, 2 * SHOOT_BONUS_DURATION);
+                weaponBonusTimer = new Timer();
+                hasWeaponBonus = true;
+                weaponBonusTimer.scheduleAtFixedRate(customTimerTask, 0, 500);
+                installWeapon();
+                break;
             default:
                 System.out.println("erreur: pas d'effet");
                 break;
@@ -854,9 +1000,10 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         // needToDrop = true;
     }
 
+
     // loads the effects icons
     public void loadIcons() throws FileNotFoundException {
-       // inputIncreaseBarSpeed = new FileInputStream("src/resources/test.png");
+        // inputIncreaseBarSpeed = new FileInputStream("src/resources/test.png");
         increaseBarSpeedImg = new Image(new FileInputStream("src/resources/barSpeedUp.png"));
         decreaseBarSpeedImg = new Image(new FileInputStream("src/resources/barSpeedDown.png"));
         increaseBarSizeImg = new Image(new FileInputStream("src/resources/barSizeUp3.png"));
@@ -865,9 +1012,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
         decreaseBallSpeedImg = new Image(new FileInputStream("src/resources/ballSpeedDown.png"));
 
 
-
-
-          //  root.getChildren().remove(imageView);
+        //  root.getChildren().remove(imageView);
     }
 
     public void playIconAnimation(Image img) {
@@ -878,7 +1023,7 @@ public class Main extends Application implements EventHandler<KeyEvent> {
             System.out.println("nb of icons : " + nbOfIcons);
             ImageView imageView = new ImageView(img);
             // the icons stacks one on top of the others
-            imageView.setLayoutY(HEIGHT - 50*nbOfIcons);
+            imageView.setLayoutY(HEIGHT - 50 * nbOfIcons);
             imageView.setLayoutX(30);
 
             FadeTransition ft = new FadeTransition(Duration.millis(3000), imageView);
@@ -903,5 +1048,49 @@ public class Main extends Application implements EventHandler<KeyEvent> {
 //            root.getChildren().add(imageView2);
 
 
+    }
+
+    private void installWeapon() {
+        if (hasWeaponBonus) {
+            root.getChildren().remove(leftWeapon);
+            root.getChildren().remove(rightWeapon);
+        }
+        leftWeapon = new Rectangle(bar.getTopLeft().x + 5, bar.getTopLeft().y - 10, 10, 10);
+        rightWeapon = new Rectangle(bar.getTopRight().x - 15, bar.getTopRight().y - 10, 10, 10);
+        leftWeapon.setFill(Color.DARKGREY);
+        rightWeapon.setFill(Color.DARKGREY);
+        root.getChildren().add(leftWeapon);
+        root.getChildren().add(rightWeapon);
+    }
+
+    private void shoot() {
+        Rectangle leftLaser = new Rectangle(bar.getTopLeft().x + 2, bar.getTopLeft().y - 6, 6, 6);
+        Rectangle rightLaser = new Rectangle(bar.getTopRight().x - 15 + 2, bar.getTopRight().y - 6, 6, 6);
+        leftLaser.setFill(Color.BLUE);
+        rightLaser.setFill(Color.BLUE);
+        newLasersList.add(leftLaser);
+        newLasersList.add(rightLaser);
+    }
+
+    private void createWeaponTimerTask() {
+        //30 secs no-brick-touching delay task
+        giveWeaponBonusTask = new TimerTask() {
+            @Override
+            public void run() {
+                Platform.runLater(() -> popEffect(new Drop("temporaryWeapon")));
+            }
+        };
+    }
+
+    private void resetBoringTimer() {
+        //reset the timer after a brick hit
+        System.out.println("timer restarted");
+        if (boringBonusTimer != null && giveWeaponBonusTask != null) {
+            boringBonusTimer.cancel();
+            boringBonusTimer = new Timer();
+            giveWeaponBonusTask.cancel();
+            createWeaponTimerTask();
+            boringBonusTimer.schedule(giveWeaponBonusTask, NO_BRICK_TOUCHED_PERIOD * 1000);
+        }
     }
 }

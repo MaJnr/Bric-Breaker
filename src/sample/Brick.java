@@ -23,7 +23,7 @@ public class Brick {
     private Drop drop;
     Circle c;
 
-    private final double DROP_CHANCE = 0.1;
+    private final double DROP_CHANCE = 0.2;
 
     public void setDrop() {
         Drop randomDrop = null;

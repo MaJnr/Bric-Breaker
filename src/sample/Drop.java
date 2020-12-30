@@ -9,8 +9,6 @@ import static java.lang.Math.random;
 
 public class Drop {
 
-    // peut-etre pas necessaire comme classe mais comme enum...
-
     /*
     todo: gestion des bonus/malus:
      - proprietes (position, effets, taille...)
@@ -22,8 +20,8 @@ public class Drop {
     private boolean isBonus;
     private final double BONUS_CHANCE = 0.5;
     private String effect;
-    private String[] bonusEffectArray = {"increaseBarSize", "decreaseBallSpeed", "increaseBarSpeed"};
-    private String[] malusEffectArray = {"decreaseBarSize", "increaseBallSpeed", "decreaseBarSpeed"};
+    private final String[] bonusEffectArray = {"increaseBarSize", "decreaseBallSpeed", "increaseBarSpeed", "temporaryWeapon"};
+    private final String[] malusEffectArray = {"decreaseBarSize", "increaseBallSpeed", "decreaseBarSpeed"};
     private boolean effectPop;
 
     private Circle circle;
@@ -33,6 +31,11 @@ public class Drop {
         setRandomEffect(BONUS_CHANCE);
         this.middle = middle;
         drawDrop();
+        effectPop = false;
+    }
+
+    public Drop(String effect) {
+        this.effect = effect;
         effectPop = false;
     }
 
